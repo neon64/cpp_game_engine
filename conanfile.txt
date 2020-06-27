@@ -1,10 +1,10 @@
 [requires]
 assimp/5.0.0
-# zlib/1.2.11
+zlib/1.2.11
 
 [options]
 assimp:shared = True
-# zlib:shared = True
+zlib:shared = True
 
 [generators]
 cmake

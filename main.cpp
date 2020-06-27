@@ -6,6 +6,10 @@
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 
+#include "src/Shader.h"
+#include "src/errors.h"
+#include "src/Program.h"
+
 using namespace std;
 
 bool import_model(const std::string& filepath) {
@@ -47,14 +51,10 @@ bool import_model(const std::string& filepath) {
     return true;
 }
 
-void handle_error(int code,const char* desc) {
-    printf("GLFW error: %s\n", desc);
-}
-
 int main() {
     printf("initing glfw\n");
     glfwInit();
-    glfwSetErrorCallback(&handle_error);
+    glfwSetErrorCallback(&handleGLFWError);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
     glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
@@ -65,19 +65,24 @@ int main() {
     glfwMakeContextCurrent(window);
 
     if(!gladLoadGLLoader((GLADloadproc) glfwGetProcAddress)) { exit(-1); }
-    printf("OpenGL Version %d.%d loaded", GLVersion.major, GLVersion.minor);
+
+    printf("OpenGL Version %d.%d loaded\n", GLVersion.major, GLVersion.minor);
+
+    glDebugMessageCallback(handleGLError, nullptr);
 
     printf("made context current\n");
 
+    Shader v = Shader::build(GL_VERTEX_SHADER, "awesome new shader", "foovoid main() {}");
+    Shader f = Shader::build(GL_FRAGMENT_SHADER, "awesome new fragment shader", "void main() {}");
+    Program p = Program::build({ std::move(v), std::move(f) });
+
     while(!glfwWindowShouldClose(window)) {
-        // run
-
-
+        // run loop
         glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT);
 
 
-        // Swap
+        // swap buffers
         glfwSwapBuffers(window);
         glfwPollEvents();
     }

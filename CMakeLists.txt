@@ -10,7 +10,7 @@ else()
     message(WARNING "The file conanbuildinfo.cmake doesn't exist, you have to run conan install first")
 endif()
 
-add_executable(game_engine main.cpp src/glad.c)
+add_executable(game_engine main.cpp src/glad.c src/Shader.cpp src/Program.cpp src/errors.cpp)
 
 include_directories(${CMAKE_SOURCE_DIR}/include)
 
