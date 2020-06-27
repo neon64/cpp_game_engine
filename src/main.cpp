@@ -6,9 +6,12 @@
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 
-#include "src/Shader.h"
-#include "src/errors.h"
-#include "src/Program.h"
+#include "Shader.h"
+#include "errors.h"
+#include "Window.h"
+#include "OpenGLContext.h"
+#include "Program.h"
+#include "commands.h"
 
 using namespace std;
 
@@ -52,44 +55,24 @@ bool import_model(const std::string& filepath) {
 }
 
 int main() {
-    printf("initing glfw\n");
-    glfwInit();
-    glfwSetErrorCallback(&handleGLFWError);
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
-    glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
-    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-    GLFWwindow* window = glfwCreateWindow(800, 600, "Test", NULL, NULL);
-    printf("created window glfw\n");
-//    glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
-    glfwMakeContextCurrent(window);
+    Window window;
 
-    if(!gladLoadGLLoader((GLADloadproc) glfwGetProcAddress)) { exit(-1); }
-
-    printf("OpenGL Version %d.%d loaded\n", GLVersion.major, GLVersion.minor);
-
-    glDebugMessageCallback(handleGLError, nullptr);
-
-    printf("made context current\n");
+    OpenGLContext context(window);
 
     Shader v = Shader::build(GL_VERTEX_SHADER, "awesome new shader", "foovoid main() {}");
     Shader f = Shader::build(GL_FRAGMENT_SHADER, "awesome new fragment shader", "void main() {}");
     Program p = Program::build({ std::move(v), std::move(f) });
 
-    while(!glfwWindowShouldClose(window)) {
+    while(!window.shouldClose()) {
         // run loop
-        glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
-        glClear(GL_COLOR_BUFFER_BIT);
+        context.submit(ClearCommand::clearColorAndDepth(ColorRGBA(1.0, 0.0, 1.0, 1.0), 1.0f));
 
-
-        // swap buffers
-        glfwSwapBuffers(window);
-        glfwPollEvents();
+        window.swapBuffers();
+        Window::pollEvents();
     }
 
     glfwTerminate();
 
-    return 0;
     import_model("/home/chris/code/java/GameEngine04/res/models/stanfordBunny/mesh.obj");
 
     std::cout << "Hello, World!" << std::endl;
