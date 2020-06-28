@@ -10,7 +10,12 @@ else()
     message(WARNING "The file conanbuildinfo.cmake doesn't exist, you have to run conan install first")
 endif()
 
-add_executable(game_engine src/main.cpp src/glad.c src/Shader.cpp src/Program.cpp src/errors.cpp src/OpenGLContext.cpp src/Window.cpp src/ColorRGBA.cpp src/commands.cpp)
+add_executable(game_engine
+    src/main.cpp src/glad.c
+    src/Shader.cpp src/Program.cpp
+    src/errors.cpp src/OpenGLContext.cpp
+    src/Window.cpp src/ColorRGBA.cpp
+    src/commands.cpp src/texturing.cpp src/pipeline.cpp src/VertexArray.cpp src/OpenGLResource.cpp src/Buffer.cpp)
 
 include_directories(${CMAKE_SOURCE_DIR}/include)
 

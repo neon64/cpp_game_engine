@@ -3,32 +3,33 @@
 
 #include <glad/glad.h>
 #include <string>
+#include <memory>
 
-typedef GLuint ShaderType;
+#include "OpenGLResource.h"
+
+using namespace std;
+
+enum ShaderType {
+    VERTEX = GL_VERTEX_SHADER,
+    FRAGMENT = GL_FRAGMENT_SHADER
+};
 
 /**
  * Corresponds to an OpenGL shader object.
  */
-class Shader {
+class Shader : public OpenGLResource<Shader> {
 private:
-    GLuint id;
     const ShaderType type;
     const std::string description;
-
-    Shader(GLuint id, ShaderType type, std::string description);
 
     void compile(const std::string &source);
 
 public:
-    GLuint getId() const;
+    Shader(GLuint id, ShaderType type, std::string description);
 
-    Shader(const Shader&) = delete;
-    Shader& operator=(const Shader&) = delete;
-    Shader(Shader&& other);
+    void destroyResource();
 
-    ~Shader();
-
-    static Shader build(ShaderType type, std::string description, const std::string& source);
+    static shared_ptr<Shader> build(ShaderType type, std::string description, const std::string& source);
 };
 
 

@@ -10,7 +10,7 @@
 #include "errors.h"
 #include "Window.h"
 #include "OpenGLContext.h"
-#include "Program.h"
+#include "pipeline.h"
 #include "commands.h"
 
 using namespace std;
@@ -59,22 +59,49 @@ int main() {
 
     OpenGLContext context(window);
 
-    Shader v = Shader::build(GL_VERTEX_SHADER, "awesome new shader", "foovoid main() {}");
-    Shader f = Shader::build(GL_FRAGMENT_SHADER, "awesome new fragment shader", "void main() {}");
-    Program p = Program::build({ std::move(v), std::move(f) });
+    {
+        auto vertexShader = Shader::build(ShaderType::VERTEX, "awesome new shader", "foovoid main() {}");
+        auto fragmentShader = Shader::build(ShaderType::FRAGMENT, "awesome new fragment shader", "void main() {}");
+//    Program p = Program::build({ std::move(v), std::move(f) });
 
-    while(!window.shouldClose()) {
-        // run loop
-        context.submit(ClearCommand::clearColorAndDepth(ColorRGBA(1.0, 0.0, 1.0, 1.0), 1.0f));
+        GraphicsPipelineCreateInfo pipelineCreateInfo = {
+                .shaders = {
+                        .vertex = vertexShader,
+                        .fragment = fragmentShader
+                },
+                .vertexInput = {
+                },
+                .inputAssembly {
+                        .topology = PrimitiveTopology::TRIANGLES
+                },
+                .rasterizer {
+                },
+                .depthStencil {
+                        .depthTest = nullopt,
+                        .depthMask = true
+                },
+                .colorBlend {
+                },
+        };
 
-        window.swapBuffers();
-        Window::pollEvents();
+        shared_ptr<GraphicsPipeline> pipeline = context.buildPipeline(pipelineCreateInfo);
+
+        while(!window.shouldClose()) {
+            // run loop
+            context.submit(ClearCommand(ColorRGBA(1.0, 0.0, 1.0, 1.0), 1.0f));
+
+            context.submit({ .pipeline = pipeline });
+
+            window.swapBuffers();
+            Window::pollEvents();
+        }
     }
 
     glfwTerminate();
 
-    import_model("/home/chris/code/java/GameEngine04/res/models/stanfordBunny/mesh.obj");
+    //import_model("/home/chris/code/java/GameEngine04/res/models/stanfordBunny/mesh.obj");
 
-    std::cout << "Hello, World!" << std::endl;
+    // std::cout << "Hello, World!" << std::endl;
+
     return 0;
 }

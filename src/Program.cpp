@@ -11,12 +11,6 @@ void Program::detachShader(const Shader& shader) {
     glDetachShader(id, shader.getId());
 }
 
-Program::Program(GLuint id) : id(id) {}
-
-Program::~Program() {
-    glDeleteProgram(id);
-}
-
 void Program::linkAndValidate() {
     glLinkProgram(id);
     glValidateProgram(id);
@@ -49,4 +43,12 @@ Program Program::build(std::initializer_list<Shader> shaders) {
     program.linkAndValidate();
 
     return program;
+}
+
+void Program::destroyResource() {
+    glDeleteProgram(id);
+}
+
+Program::Program(GLuint id) : OpenGLResource(id) {
+
 }

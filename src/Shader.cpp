@@ -1,17 +1,19 @@
 #include "Shader.h"
 #include <glad/glad.h>
 #include <iostream>
+#include <memory>
 
-Shader::Shader(GLuint id, ShaderType type, std::string description) : id(id), type(type), description(description) { }
+using namespace std;
 
-Shader::~Shader() {
-    if(id == 0) { return; }
-    std::cout << "glDeleteShader(" << id << ")" << std::endl;
+Shader::Shader(GLuint id, ShaderType type, std::string description) : OpenGLResource(id), type(type), description(description) { }
+
+void Shader::destroyResource() {
+    std::cout << "glDeleteShader(" << getId() << ")" << std::endl;
     glDeleteShader(id);
 }
 
 void Shader::compile(const std::string &source) {
-    std::cout << "compiling shader id=" << id << std::endl;
+    std::cout << "compiling shader id=" << getId() << std::endl;
     int len = source.size();
     const char *first_string = source.c_str();
     glShaderSource(id, 1, &first_string, &len);
@@ -33,19 +35,11 @@ void Shader::compile(const std::string &source) {
     }
 }
 
-Shader Shader::build(ShaderType type, std::string description, const std::string &source) {
-    int id = glCreateShader(type);
+shared_ptr<Shader> Shader::build(ShaderType type, std::string description, const std::string &source) {
+    GLuint id = glCreateShader(type);
 
-    Shader s(id, type, description);
-    s.compile(source);
+    auto s = make_shared<Shader>(id, type, description);
+    s->compile(source);
 
-    return std::move(s);
-}
-
-GLuint Shader::getId() const {
-    return id;
-}
-
-Shader::Shader(Shader &&other) : id(std::move(other.id)), type(std::move(other.type)), description(std::move(other.description)) {
-    id = 0;
+    return s;
 }

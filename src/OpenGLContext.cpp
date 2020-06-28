@@ -2,6 +2,11 @@
 #include "OpenGLContext.h"
 #include "errors.h"
 
+#include <iostream>
+#include <memory>
+
+using namespace std;
+
 OpenGLContext::OpenGLContext(Window &window) {
     window.makeContextCurrent();
 
@@ -33,4 +38,19 @@ void OpenGLContext::submit(ClearCommand command) {
     }
 
     glClear(bits);
+}
+
+void OpenGLContext::submit(DrawCommand command) {
+    // cout << "submitting drawing command" << endl;
+}
+
+shared_ptr<GraphicsPipeline> OpenGLContext::buildPipeline(GraphicsPipelineCreateInfo info) {
+    return make_shared<GraphicsPipeline>();
+}
+
+void OpenGLContext::bindVertexArray(VertexArray& vertexArray) {
+    if(vertexArray.getId() != currentVertexArray) {
+        glBindVertexArray(vertexArray.getId());
+        currentVertexArray = vertexArray.getId();
+    }
 }

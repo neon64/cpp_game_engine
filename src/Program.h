@@ -3,13 +3,10 @@
 
 #include <initializer_list>
 #include "Shader.h"
+#include "OpenGLResource.h"
 
-typedef int ProgramRef;
-
-class Program {
+class Program : public OpenGLResource<Program> {
 private:
-
-
     void attachShader(const Shader& s);
     void detachShader(const Shader& s);
 
@@ -17,12 +14,7 @@ private:
 
     void linkAndValidate();
 public:
-    const GLuint id;
-
-    Program(const Shader&) = delete;
-    Program& operator=(const Shader&) = delete;
-
-    ~Program();
+    void destroyResource();
 
     static Program build(std::initializer_list<Shader> shader);
 };

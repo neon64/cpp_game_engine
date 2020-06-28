@@ -1,0 +1,9 @@
+
+#ifndef GAME_ENGINE_TEXTURING_H
+#define GAME_ENGINE_TEXTURING_H
+
+class Texture {
+
+};
+
+#endif //GAME_ENGINE_TEXTURING_H
