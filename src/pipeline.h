@@ -29,10 +29,10 @@ enum InputRate {
 };
 
 enum DataFormat {
-    R8,
-    R8G8,
-    R8G8B8,
-    R8G8B8A8
+    R32_SFLOAT,
+    R32G32_SFLOAT,
+    R32G32B32_SFLOAT,
+    R32G32B32A32_SFLOAT
 };
 
 struct VertexInputBinding {
@@ -152,21 +152,46 @@ struct ShaderStages {
     shared_ptr<Shader> vertex;
     shared_ptr<Shader> fragment;
     // TODO: optional other stages
+
+    bool operator==(const ShaderStages &other) const {
+        return (vertex == other.vertex
+              && fragment == other.fragment);
+    }
 };
+
+// from https://en.cppreference.com/w/cpp/utility/hash
+namespace std {
+
+    template <>
+    struct hash<ShaderStages> {
+        std::size_t operator()(const ShaderStages& k) const {
+            using std::size_t;
+            using std::hash;
+            using std::string;
+
+            // should maybe use boost::hash_combine instead
+            return ((hash<shared_ptr<Shader>>()(k.vertex)
+                     ^ (hash<shared_ptr<Shader>>()(k.fragment) << 1)) >> 1);
+        }
+    };
+
+}
 
 struct GraphicsPipelineCreateInfo {
     ShaderStages shaders;
     VertexInputState vertexInput;
-    InputAssemblerState inputAssembly;
+    InputAssemblerState inputAssembler;
     RasterizationState rasterizer;
     DepthStencilState depthStencil;
     ColorBlendState colorBlend;
 };
 
 class GraphicsPipeline {
+public:
     shared_ptr<Program> program;
     shared_ptr<VertexArray> vertexArray;
-    InputAssemblerState inputAssembly;
+    vector<VertexInputBinding> vertexInputBindings;
+    InputAssemblerState inputAssembler;
     // TesselationState;
     // ViewportState; - will use the default viewport
     RasterizationState rasterizer;
@@ -174,6 +199,9 @@ class GraphicsPipeline {
     DepthStencilState depthStencil;
     ColorBlendState colorBlend;
     // DynamicState;
+
+public:
+    GraphicsPipeline(shared_ptr<Program> program, shared_ptr<VertexArray> vertexArray, vector<VertexInputBinding> vertexInputBindings, InputAssemblerState inputAssembler, RasterizationState rasterizer, DepthStencilState depthStencil, ColorBlendState colorBlend);
 };
 
 #endif //GAME_ENGINE_PIPELINE_H

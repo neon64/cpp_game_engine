@@ -23,7 +23,6 @@ private:
     const std::string description;
 
     void compile(const std::string &source);
-
 public:
     Shader(GLuint id, ShaderType type, std::string description);
 

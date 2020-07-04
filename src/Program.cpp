@@ -32,18 +32,18 @@ void Program::linkAndValidate() {
     }
 }
 
-Program Program::build(std::initializer_list<Shader> shaders) {
-    GLuint programId = glCreateProgram();
-    Program program(programId);
-
-    for(auto &shader : shaders) {
-        program.attachShader(shader);
-    }
-
-    program.linkAndValidate();
-
-    return program;
-}
+//Program Program::build(std::initializer_list<Shader*> shaders) {
+//    GLuint programId = glCreateProgram();
+//    Program program(programId);
+//
+//    for(auto &shader : shaders) {
+//        program.attachShader(shader);
+//    }
+//
+//    program.linkAndValidate();
+//
+//    return program;
+//}
 
 void Program::destroyResource() {
     glDeleteProgram(id);
