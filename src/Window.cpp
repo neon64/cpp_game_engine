@@ -130,4 +130,3 @@ void Window::toggleFullscreen() {
         enterFullscreen();
     }
 }
-

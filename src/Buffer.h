@@ -15,15 +15,12 @@ enum BufferUsage {
 
 class Buffer : public OpenGLResource<Buffer> {
 public:
-    GLintptr size;
+    Buffer(GLuint id, BufferUsage usage, GLintptr size);
 
-    Buffer(GLuint id, BufferUsage usage);
-
+    const GLintptr size;
     const BufferUsage usage;
 
     void destroyResource();
-
-    static shared_ptr<Buffer> build(BufferUsage usage);
 };
 
 enum IndexFormat {

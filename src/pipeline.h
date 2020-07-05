@@ -29,6 +29,10 @@ enum InputRate {
 };
 
 enum DataFormat {
+    R8G8B8_UINT,
+    R8G8B8A8_UINT,
+    R8G8B8_SRGB,
+    R8G8B8A8_SRGB,
     R32_SFLOAT,
     R32G32_SFLOAT,
     R32G32B32_SFLOAT,

@@ -4,16 +4,8 @@
 
 using namespace std;
 
-Buffer::Buffer(GLuint id, BufferUsage usage) : OpenGLResource(id), usage(usage) {
-
-}
+Buffer::Buffer(GLuint id, BufferUsage usage, GLintptr size) : OpenGLResource(id), usage(usage), size(size) {}
 
 void Buffer::destroyResource() {
     glDeleteBuffers(1, &id);
-}
-
-shared_ptr<Buffer> Buffer::build(BufferUsage usage) {
-    GLuint id;
-    glGenBuffers(1, &id);
-    return make_shared<Buffer>(id, usage);
 }

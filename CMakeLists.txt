@@ -15,7 +15,7 @@ add_executable(game_engine
     src/Shader.cpp src/Program.cpp
     src/errors.cpp src/OpenGLContext.cpp
     src/Window.cpp src/ColorRGBA.cpp
-    src/commands.cpp src/texturing.cpp src/pipeline.cpp src/VertexArray.cpp src/OpenGLResource.cpp src/Buffer.cpp src/Camera.cpp)
+    src/commands.cpp src/texturing.cpp src/pipeline.cpp src/VertexArray.cpp src/OpenGLResource.cpp src/Buffer.cpp src/Camera.cpp src/stb_image.cpp src/RenderTarget.cpp)
 
 include_directories(${CMAKE_SOURCE_DIR}/include)
 

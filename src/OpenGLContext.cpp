@@ -11,7 +11,7 @@ using namespace std;
 
 void callVertexAttribFormat(DataFormat format, GLuint location, GLuint offset);
 
-OpenGLContext::OpenGLContext(Window &window) {
+OpenGLContext::OpenGLContext(Window &window) : defaultRenderTarget(DefaultRenderTarget()) {
     window.makeContextCurrent();
 
     if(!gladLoadGLLoader((GLADloadproc) glfwGetProcAddress)) { exit(-1); }
@@ -50,6 +50,9 @@ GLintptr indexFormatGetBytes(IndexFormat format) {
             return 16;
         case IndexFormat::UINT32:
             return 32;
+        default:
+            assert(false);
+            return 0;
     }
 }
 
@@ -69,11 +72,7 @@ void OpenGLContext::switchPipeline(const shared_ptr<GraphicsPipeline>& pipeline)
     }
 
     if (pipeline->depthStencil.depthMask != depthMask) {
-        if(pipeline->depthStencil.depthMask) {
-            glDepthMask(true);
-        } else {
-            glDepthMask(false);
-        }
+        glDepthMask(pipeline->depthStencil.depthMask);
         depthMask = !depthMask;
     }
 
@@ -105,6 +104,16 @@ void OpenGLContext::switchPipeline(const shared_ptr<GraphicsPipeline>& pipeline)
     bindVertexArray(*pipeline->vertexArray);
 }
 
+void RenderTargetGuard::clear(ClearCommand command) {
+    context->submit(command);
+}
+
+void RenderTargetGuard::draw(DrawCommand command) {
+    context->submit(command);
+}
+
+RenderTargetGuard::RenderTargetGuard(OpenGLContext* context) : context(context) {}
+
 void OpenGLContext::submit(DrawCommand command) {
     switchPipeline(command.pipeline);
 
@@ -112,12 +121,19 @@ void OpenGLContext::submit(DrawCommand command) {
         uint32_t index = binding.binding;
         const auto& it = command.vertexBuffers.find(index);
         assert(it != command.vertexBuffers.end());
-        // TODO: state track this
+        // TODO: track this state
         glBindVertexBuffer(index, it->second.buffer->getId(), it->second.offset, binding.stride);
     }
 
     for(auto& it : command.uniformBuffers) {
         bindUniformBuffer(*it.second.buffer, it.first, it.second.offset, it.second.size);
+    }
+
+    for(auto& it : command.textures) {
+        // TODO: track this state
+        glActiveTexture(GL_TEXTURE0 + it.first);
+        glBindTexture(static_cast<GLuint>(it.second.texture->type), it.second.texture->getId());
+        glBindSampler(it.first, it.second.sampler->getId());
     }
 
     GLenum topology = command.pipeline->inputAssembler.topology;
@@ -195,6 +211,8 @@ void callVertexAttribFormat(DataFormat format, GLuint location, GLuint offset) {
         case R32G32B32A32_SFLOAT:
             glVertexAttribFormat(location, 4, GL_FLOAT, GL_FALSE, offset);
             break;
+        default:
+            assert(false);
     }
 }
 
@@ -205,11 +223,19 @@ void OpenGLContext::bindVertexArray(VertexArray& vertexArray) {
     }
 }
 
-void OpenGLContext::setBufferStorage(Buffer& buffer, GLsizeiptr size, const void *data, GLbitfield flags) {
-    bindBuffer(buffer, GL_ARRAY_BUFFER);
+shared_ptr<Buffer> OpenGLContext::buildBuffer(BufferUsage usage, GLsizeiptr size, const void *data, GLbitfield flags) {
+    GLuint id;
+    glGenBuffers(1, &id);
+    auto buffer = make_shared<Buffer>(id, usage, size);
 
+    bindBuffer(*buffer, GL_ARRAY_BUFFER);
     glBufferStorage(GL_ARRAY_BUFFER, size, data, flags);
-    buffer.size = size;
+
+    return buffer;
+}
+
+shared_ptr<Buffer> OpenGLContext::buildBuffer(BufferUsage usage, GLsizeiptr size, GLbitfield flags) {
+    return buildBuffer(usage, size, nullptr, flags);
 }
 
 shared_ptr<Program> OpenGLContext::getProgram(ShaderStages stages) {
@@ -259,4 +285,76 @@ void OpenGLContext::switchProgram(const Program &program) {
         glUseProgram(program.getId());
         currentProgram = program.getId();
     }
+}
+
+void OpenGLContext::bindTexture(Texture &texture) {
+    glBindTexture(static_cast<GLuint>(texture.type), texture.getId());
+}
+
+GLuint getTextureFormat(DataFormat format) {
+    switch(format) {
+        case R8G8B8_UINT:
+            return GL_RGB8;
+        case R8G8B8A8_UINT:
+            return GL_RGBA8;
+        case R8G8B8_SRGB:
+            return GL_SRGB8;
+        case R8G8B8A8_SRGB:
+            return GL_SRGB8_ALPHA8;
+        default:
+            assert(false);
+            return 0;
+    }
+}
+
+GLuint getTransferDataFormat(TransferFormat format) {
+    switch(format) {
+        case TransferFormat::R8G8B8_UINT:
+            return GL_RGB;
+        default:
+            assert(false);
+            return 0;
+    }
+}
+
+GLuint getTransferDataType(TransferFormat format) {
+    switch(format) {
+        case TransferFormat::R8G8B8_UINT:
+            return GL_UNSIGNED_BYTE;
+        default:
+            assert(false);
+            return 0;
+    }
+}
+
+shared_ptr<Texture> OpenGLContext::buildTexture2D(DataFormat format, Dimensions2d size, bool hasMipMaps) {
+    TextureType type = TextureType::TEXTURE_2D;
+    GLuint id;
+    glGenTextures(1, &id);
+    auto tex = make_shared<Texture>(id, type, format, size, hasMipMaps);
+
+    bindTexture(*tex);
+    glTexStorage2D(static_cast<GLuint>(type), hasMipMaps ? floor(log2(max(size.width, size.height))) + 1 : 1, getTextureFormat(format), size.width, size.height);
+
+    return tex;
+}
+
+void OpenGLContext::uploadBaseImage2D(Texture& texture, TransferFormat format, const void *data) {
+    bindTexture(texture);
+    glTexSubImage2D(static_cast<GLuint>(texture.type), 0, 0, 0, texture.size.width, texture.size.height, getTransferDataFormat(format), getTransferDataType(format), data);
+    if(texture.hasMipMaps) {
+        glGenerateMipmap(static_cast<GLuint>(texture.type));
+    }
+}
+
+DefaultRenderTarget OpenGLContext::getDefaultRenderTarget() {
+    return defaultRenderTarget;
+}
+
+void OpenGLContext::bindFramebuffer(GLuint id) {
+    glBindFramebuffer(GL_FRAMEBUFFER, id);
+}
+
+void DefaultRenderTarget::activate(OpenGLContext *context) {
+    context->bindFramebuffer(0);
 }

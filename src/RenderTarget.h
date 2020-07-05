@@ -1,0 +1,10 @@
+
+#ifndef GAME_ENGINE_RENDERTARGET_H
+#define GAME_ENGINE_RENDERTARGET_H
+
+class RenderTarget {
+
+};
+
+
+#endif //GAME_ENGINE_RENDERTARGET_H

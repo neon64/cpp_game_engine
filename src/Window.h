@@ -7,6 +7,7 @@
 #include <functional>
 #include <glm/glm.hpp>
 #include "util.h"
+#include "RenderTarget.h"
 
 class Window {
 private:
@@ -14,6 +15,8 @@ private:
     static void initGLFW();
 
     Dimensions2d windowedSize;
+
+    RenderTarget renderTarget;
 
     std::vector<std::function<void(Dimensions2d)>> resizeCallbacks;
 

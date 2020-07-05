@@ -9,6 +9,7 @@
 
 #include "Buffer.h"
 #include "ColorRGBA.h"
+#include "texturing.h"
 #include "pipeline.h"
 
 using namespace std;
@@ -33,6 +34,11 @@ struct UniformBufferBinding {
     const uint32_t size;
 };
 
+struct TextureBinding {
+    const shared_ptr<Texture> texture;
+    const shared_ptr<Sampler> sampler;
+};
+
 struct NonIndexedDrawCall {
     const GLuint vertexCount;
     const GLuint firstVertex = 0;
@@ -55,6 +61,7 @@ struct DrawCommand {
     // TODO: optimise this
     const unordered_map<uint32_t, VertexBufferBinding> vertexBuffers;
     const unordered_map<uint32_t, UniformBufferBinding> uniformBuffers;
+    const unordered_map<uint32_t, TextureBinding> textures;
 
     const variant<NonIndexedDrawCall, IndexedDrawCall> call;
 
