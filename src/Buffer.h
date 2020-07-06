@@ -7,6 +7,8 @@
 
 using namespace std;
 
+struct UniformBufferBinding;
+
 enum BufferUsage {
     STATIC_DRAW  = GL_STATIC_DRAW,
     DYNAMIC_DRAW = GL_DYNAMIC_DRAW,
@@ -21,6 +23,19 @@ public:
     const BufferUsage usage;
 
     void destroyResource();
+
+    UniformBufferBinding asUniformBuffer() const;
+};
+
+struct VertexBufferBinding {
+    const Buffer& buffer;
+    const uint32_t offset;
+};
+
+struct UniformBufferBinding {
+    const Buffer& buffer;
+    const uint32_t offset;
+    const uint32_t size;
 };
 
 enum IndexFormat {

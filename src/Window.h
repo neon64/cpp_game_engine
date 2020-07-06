@@ -1,13 +1,12 @@
 #ifndef GAME_ENGINE_WINDOW_H
 #define GAME_ENGINE_WINDOW_H
 
-#include <GLFW/glfw3.h>
 #include <memory>
 #include <vector>
 #include <functional>
 #include <glm/glm.hpp>
 #include "util.h"
-#include "RenderTarget.h"
+#include <GLFW/glfw3.h>
 
 class Window {
 private:
@@ -15,8 +14,7 @@ private:
     static void initGLFW();
 
     Dimensions2d windowedSize;
-
-    RenderTarget renderTarget;
+    Dimensions2d size;
 
     std::vector<std::function<void(Dimensions2d)>> resizeCallbacks;
 
@@ -43,6 +41,11 @@ public:
 
     void makeContextCurrent();
 
+    void grabMouseCursor();
+    void releaseMouseCursor();
+
+    Dimensions2d getSize();
+
     bool isKeyDown(int key) const;
 
     bool shouldClose() const;
@@ -56,6 +59,7 @@ public:
     void toggleFullscreen();
 
     static void pollEvents();
+    static void terminate();
 
     ~Window();
 };

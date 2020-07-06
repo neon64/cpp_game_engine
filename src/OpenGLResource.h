@@ -2,9 +2,9 @@
 #ifndef GAME_ENGINE_OPENGLRESOURCE_H
 #define GAME_ENGINE_OPENGLRESOURCE_H
 
+#include <glad/glad.h>
 #include <memory>
 #include <iostream>
-#include <glad/glad.h>
 
 template<typename T>
 class OpenGLResource {

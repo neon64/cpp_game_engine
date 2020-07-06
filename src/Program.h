@@ -15,8 +15,6 @@ public:
     void linkAndValidate();
 
     void destroyResource();
-
-    // static Program build(std::initializer_list<Shader*> shader);
 };
 
 

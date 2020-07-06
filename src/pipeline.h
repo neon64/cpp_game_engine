@@ -8,6 +8,7 @@
 #include <optional>
 #include <tuple>
 #include <glad/glad.h>
+#include <unordered_map>
 
 #include "Program.h"
 #include "VertexArray.h"
@@ -36,7 +37,10 @@ enum DataFormat {
     R32_SFLOAT,
     R32G32_SFLOAT,
     R32G32B32_SFLOAT,
-    R32G32B32A32_SFLOAT
+    R32G32B32A32_SFLOAT,
+    D16_UNORM,
+    D24_UNORM,
+    D32_SFLOAT
 };
 
 struct VertexInputBinding {
@@ -80,8 +84,8 @@ enum FrontFace {
 };
 
 struct RasterizationState {
-    bool depthClampEnable = false;
-    bool rasterizerDiscardEnable = false;
+    // bool depthClampEnable = false;
+    // bool rasterizerDiscardEnable = false;
     PolygonMode polygonMode = PolygonMode::FILL;
     optional<CullMode> culling = nullopt;
     FrontFace frontFace = FrontFace::COUNTER_CLOCKWISE;
@@ -143,13 +147,13 @@ struct Blending {
     BlendingFactor dstFactor;
 };
 
-struct ColorAttachment {
+struct ColorBlendPerAttachment {
     optional<Blending> blending = nullopt;
     tuple<bool, bool, bool, bool> mask = tuple(true, true, true, true);
 };
 
 struct ColorBlendState {
-    vector<ColorAttachment> attachments;
+    unordered_map<int, ColorBlendPerAttachment> attachments;
 };
 
 struct ShaderStages {
@@ -193,7 +197,7 @@ struct GraphicsPipelineCreateInfo {
 class GraphicsPipeline {
 public:
     shared_ptr<Program> program;
-    shared_ptr<VertexArray> vertexArray;
+    VertexArray vertexArray;
     vector<VertexInputBinding> vertexInputBindings;
     InputAssemblerState inputAssembler;
     // TesselationState;
@@ -205,7 +209,7 @@ public:
     // DynamicState;
 
 public:
-    GraphicsPipeline(shared_ptr<Program> program, shared_ptr<VertexArray> vertexArray, vector<VertexInputBinding> vertexInputBindings, InputAssemblerState inputAssembler, RasterizationState rasterizer, DepthStencilState depthStencil, ColorBlendState colorBlend);
+    GraphicsPipeline(shared_ptr<Program> program, VertexArray&& vertexArray, vector<VertexInputBinding> vertexInputBindings, InputAssemblerState inputAssembler, RasterizationState rasterizer, DepthStencilState depthStencil, ColorBlendState colorBlend);
 };
 
 #endif //GAME_ENGINE_PIPELINE_H

@@ -66,7 +66,7 @@ public:
 
     void destroyResource();
 
-    static shared_ptr<Sampler> build(SamplerCreateInfo info);
+    static Sampler build(SamplerCreateInfo info);
 
 };
 

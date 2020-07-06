@@ -21,6 +21,8 @@ public:
     double offsetX, offsetY;
     Camera(Window &window, float mouseSensitivity, float movementSpeed);
 
+    glm::vec3 getPosition();
+
     void processInput();
 
     glm::mat4 calculateViewMatrix();

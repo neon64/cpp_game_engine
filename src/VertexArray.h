@@ -12,7 +12,7 @@ public:
 
     void destroyResource();
 
-    static std::shared_ptr<VertexArray> build();
+    static VertexArray build();
 };
 
 

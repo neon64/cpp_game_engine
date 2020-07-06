@@ -21,7 +21,7 @@ void handle_window_resize(GLFWwindow *window, int width, int height) {
     (static_cast<Window *>(glfwGetWindowUserPointer(window))->onResize)(Dimensions2d(width, height));
 }
 
-Window::Window(Dimensions2d size, const char *name) : windowedSize(size) {
+Window::Window(Dimensions2d size, const char *name) : windowedSize(size), size(size) {
     if(!hasInitGLFW) {
         Window::initGLFW();
     }
@@ -33,12 +33,6 @@ Window::Window(Dimensions2d size, const char *name) : windowedSize(size) {
     glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GL_TRUE);
 
     handle = glfwCreateWindow(size.width, size.height, name, NULL, NULL);
-
-    glfwSetInputMode(handle, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
-    if (glfwRawMouseMotionSupported()) {
-        cout << "Raw mouse motion" << endl;
-        glfwSetInputMode(handle, GLFW_RAW_MOUSE_MOTION, GLFW_TRUE);
-    }
 
     glfwSetWindowUserPointer(handle, this);
     glfwSetWindowSizeCallback(handle, handle_window_resize);
@@ -102,6 +96,7 @@ void Window::addResizeCallback(std::function<void(Dimensions2d)> resizeCallback)
 }
 
 void Window::onResize(Dimensions2d newSize) {
+    size = newSize;
     for(auto& callback : resizeCallbacks) {
         (callback)(newSize);
     }
@@ -129,4 +124,24 @@ void Window::toggleFullscreen() {
     } else {
         enterFullscreen();
     }
+}
+
+Dimensions2d Window::getSize() {
+    return size;
+}
+
+void Window::terminate() {
+    glfwTerminate();
+}
+
+void Window::grabMouseCursor() {
+    glfwSetInputMode(handle, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+    if (glfwRawMouseMotionSupported()) {
+        cout << "Using raw mouse motion" << endl;
+        glfwSetInputMode(handle, GLFW_RAW_MOUSE_MOTION, GLFW_TRUE);
+    }
+}
+
+void Window::releaseMouseCursor() {
+    glfwSetInputMode(handle, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
 }

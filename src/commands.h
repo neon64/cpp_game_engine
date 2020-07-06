@@ -23,20 +23,9 @@ struct ClearCommand {
     ClearCommand(ColorRGBA color, double depth);
 };
 
-struct VertexBufferBinding {
-    const shared_ptr<Buffer> buffer;
-    const uint32_t offset;
-};
-
-struct UniformBufferBinding {
-    const shared_ptr<Buffer> buffer;
-    const uint32_t offset;
-    const uint32_t size;
-};
-
 struct TextureBinding {
-    const shared_ptr<Texture> texture;
-    const shared_ptr<Sampler> sampler;
+    const Texture& texture;
+    const Sampler& sampler;
 };
 
 struct NonIndexedDrawCall {
@@ -56,7 +45,7 @@ struct IndexedDrawCall {
 };
 
 struct DrawCommand {
-    const shared_ptr<GraphicsPipeline> pipeline;
+    GraphicsPipeline& pipeline;
 
     // TODO: optimise this
     const unordered_map<uint32_t, VertexBufferBinding> vertexBuffers;

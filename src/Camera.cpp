@@ -37,7 +37,7 @@ Camera::Camera(Window &window, float mouseSensitivity, float movementSpeed) : wi
     });
 
     window.addResizeCallback([this](Dimensions2d newSize) {
-        projectionMatrix = glm::perspective(glm::radians(45.0f), (float) newSize.width / (float) newSize.height, 0.01f, 100.f);
+        projectionMatrix = glm::perspective(glm::radians(45.0f), (float) newSize.width / (float) newSize.height, 0.01f, 10.f);
     });
 }
 
@@ -69,4 +69,8 @@ glm::mat4 Camera::calculateViewMatrix() {
 
 glm::mat4 Camera::calculateProjectionMatrix() {
     return projectionMatrix;
+}
+
+glm::vec3 Camera::getPosition() {
+    return position;
 }

@@ -25,12 +25,12 @@ GLuint getMinFilterEnum(SamplerFilter minFilter, SamplerMipmapMode mipmapMode) {
         } else if(mipmapMode == SamplerMipmapMode::DISABLED) {
             return GL_LINEAR;
         }
-    } else {
-        assert(false);
     }
+    assert(false);
+    return 0;
 }
 
-shared_ptr<Sampler> Sampler::build(SamplerCreateInfo info) {
+Sampler Sampler::build(SamplerCreateInfo info) {
     GLuint id;
     glGenSamplers(1, &id);
 
@@ -50,7 +50,7 @@ shared_ptr<Sampler> Sampler::build(SamplerCreateInfo info) {
 
     glSamplerParameteri(id, GL_TEXTURE_CUBE_MAP_SEAMLESS, info.cubemapSeamless ? GL_TRUE : GL_FALSE);
 
-    return make_shared<Sampler>(id);
+    return Sampler(id);
 }
 
 Sampler::Sampler(GLuint id) : OpenGLResource(id) {}
