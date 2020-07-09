@@ -7,7 +7,7 @@
 #include <unordered_map>
 #include <variant>
 
-#include "Buffer.h"
+#include "buffer.h"
 #include "ColorRGBA.h"
 #include "texturing.h"
 #include "pipeline.h"
@@ -23,11 +23,6 @@ struct ClearCommand {
     ClearCommand(ColorRGBA color, double depth);
 };
 
-struct TextureBinding {
-    const Texture& texture;
-    const Sampler& sampler;
-};
-
 struct NonIndexedDrawCall {
     const GLuint vertexCount;
     const GLuint firstVertex = 0;
@@ -38,19 +33,19 @@ struct NonIndexedDrawCall {
 struct IndexedDrawCall {
     const GLuint indexCount;
     const GLintptr firstIndex = 0;
+    const GLuint firstVertex = 0;
     const IndexBufferRef indexBuffer;
 
     IndexedDrawCall(GLuint indexCount, GLuint firstIndex, IndexBufferRef indexBuffer)
         : indexCount(indexCount), firstIndex(firstIndex), indexBuffer(indexBuffer) {}
 };
 
+template<typename V, typename R>
 struct DrawCommand {
-    GraphicsPipeline& pipeline;
+    GraphicsPipeline<V, R>& pipeline;
 
-    // TODO: optimise this
-    const unordered_map<uint32_t, VertexBufferBinding> vertexBuffers;
-    const unordered_map<uint32_t, UniformBufferBinding> uniformBuffers;
-    const unordered_map<uint32_t, TextureBinding> textures;
+    const V vertexBindings;
+    const R resourceBindings;
 
     const variant<NonIndexedDrawCall, IndexedDrawCall> call;
 
@@ -58,5 +53,6 @@ struct DrawCommand {
     const GLuint firstInstance = 0;
 };
 
+using UntypedDrawCommand = DrawCommand<UntypedVertexBindings, UntypedResourceBindings>;
 
 #endif //GAME_ENGINE_COMMANDS_H

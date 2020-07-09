@@ -1,7 +1,7 @@
 #include <glad/glad.h>
 #include "OpenGLContext.h"
 #include "errors.h"
-#include "Buffer.h"
+#include "buffer.h"
 
 #include <iostream>
 #include <variant>
@@ -11,7 +11,6 @@
 
 using namespace std;
 
-void callVertexAttribFormat(DataFormat format, GLuint location, GLuint offset);
 
 OpenGLContext::OpenGLContext(Window &window) : window(window), defaultRenderTarget(DefaultRenderTarget(window)) {
     window.makeContextCurrent();
@@ -58,171 +57,13 @@ GLintptr indexFormatGetBytes(IndexFormat format) {
     }
 }
 
-void OpenGLContext::switchPipeline(GraphicsPipeline& pipeline) {
-//    if (currentPipeline.has_value() && currentPipeline.value() == pipeline) {
-//        return;
-//    }
-//    currentPipeline = make_optional(pipeline);
-
-    switchProgram(*pipeline.program);
-
-    if (pipeline.depthStencil.depthTest.has_value()) {
-        glEnable(GL_DEPTH_TEST);
-        glDepthFunc(pipeline.depthStencil.depthTest.value());
-    } else {
-        glDisable(GL_DEPTH_TEST);
-    }
-
-    if (pipeline.depthStencil.depthMask != depthMask) {
-        glDepthMask(pipeline.depthStencil.depthMask);
-        depthMask = !depthMask;
-    }
-
-    if(pipeline.inputAssembler.primitiveRestartEnable != primitiveRestartEnabled) {
-        if(pipeline.inputAssembler.primitiveRestartEnable) {
-            glEnable(GL_PRIMITIVE_RESTART);
-            glEnable(GL_PRIMITIVE_RESTART_FIXED_INDEX);
-        } else {
-            glDisable(GL_PRIMITIVE_RESTART);
-        }
-        primitiveRestartEnabled = !primitiveRestartEnabled;
-    }
-
-    if(pipeline.rasterizer.polygonMode != rasterizer.polygonMode) {
-
-        glPolygonMode(GL_FRONT_AND_BACK, pipeline.rasterizer.polygonMode);
-        rasterizer.polygonMode = pipeline.rasterizer.polygonMode;
-    }
-
-    if(pipeline.rasterizer.culling != rasterizer.culling) {
-        if(pipeline.rasterizer.culling.has_value()) {
-            glEnable(GL_CULL_FACE);
-            glCullFace(pipeline.rasterizer.culling.value());
-        } else {
-            glDisable(GL_CULL_FACE);
-        }
-        rasterizer.culling = pipeline.rasterizer.culling;
-    }
-
-    if(pipeline.rasterizer.frontFace != rasterizer.frontFace) {
-        glFrontFace(pipeline.rasterizer.frontFace);
-        rasterizer.frontFace = pipeline.rasterizer.frontFace;
-    }
-
-    bindVertexArray(pipeline.vertexArray);
-}
-
 void RenderTargetGuard::clear(ClearCommand command) {
-    context->submit(command);
-}
-
-void RenderTargetGuard::draw(DrawCommand command) {
     context->submit(command);
 }
 
 RenderTargetGuard::RenderTargetGuard(OpenGLContext* context) : context(context) {}
 
-void OpenGLContext::submit(DrawCommand command) {
-    switchPipeline(command.pipeline);
 
-    for(auto& binding : command.pipeline.vertexInputBindings) {
-        uint32_t index = binding.binding;
-        const auto& it = command.vertexBuffers.find(index);
-        assert(it != command.vertexBuffers.end());
-        // TODO: track this state
-        glBindVertexBuffer(index, it->second.buffer.getId(), it->second.offset, binding.stride);
-    }
-
-    for(auto& it : command.uniformBuffers) {
-        bindUniformBuffer(it.second.buffer, it.first, it.second.offset, it.second.size);
-    }
-
-    for(auto& it : command.textures) {
-        // TODO: track this state
-        glActiveTexture(GL_TEXTURE0 + it.first);
-        glBindTexture(static_cast<GLuint>(it.second.texture.type), it.second.texture.getId());
-        glBindSampler(it.first, it.second.sampler.getId());
-    }
-
-    GLenum topology = command.pipeline.inputAssembler.topology;
-    if(auto call = std::get_if<NonIndexedDrawCall>(&command.call)) {
-        if(command.instanceCount == 1) {
-            glDrawArrays(topology, call->firstVertex, call->vertexCount);
-        } else {
-            if(command.firstInstance == 0) {
-                glDrawArraysInstanced(topology, call->firstVertex, call->vertexCount, command.instanceCount);
-            }
-            glDrawArraysInstancedBaseInstance(topology, call->firstVertex, call->vertexCount, command.instanceCount, command.firstInstance);
-        }
-    } else if(auto call = std::get_if<IndexedDrawCall>(&command.call)) {
-        bindBuffer(*call->indexBuffer.buffer, GL_ELEMENT_ARRAY_BUFFER);
-
-        const void *indexOffset = (const void *) (call->firstIndex * indexFormatGetBytes(call->indexBuffer.format));
-
-        if(command.instanceCount == 1) {
-            glDrawElements(topology, call->indexCount, call->indexBuffer.format, indexOffset);
-        } else {
-            if(command.firstInstance == 0) {
-                glDrawElementsInstanced(
-                        topology, call->indexCount, call->indexBuffer.format, indexOffset,
-                        command.instanceCount);
-            } else {
-                glDrawElementsInstancedBaseInstance(
-                        topology, call->indexCount, call->indexBuffer.format, indexOffset,
-                        command.instanceCount, command.firstInstance);
-            }
-
-        }
-    }
-}
-
-GraphicsPipeline OpenGLContext::buildPipeline(GraphicsPipelineCreateInfo info) {
-    shared_ptr<Program> program = getProgram(info.shaders);
-    VertexArray vertexArray = VertexArray::build();
-
-    bindVertexArray(vertexArray);
-    for(auto& attribute : info.vertexInput.attributes) {
-        glEnableVertexAttribArray(attribute.location);
-        callVertexAttribFormat(attribute.format, attribute.location, attribute.offset);
-        glVertexAttribBinding(attribute.location, attribute.binding);
-    };
-
-    for(auto& binding : info.vertexInput.bindings) {
-        if(binding.inputRate == InputRate::PER_INSTANCE) {
-            glVertexBindingDivisor(binding.binding, 1);
-        }
-    }
-
-    return GraphicsPipeline(
-        program,
-        std::move(vertexArray),
-        info.vertexInput.bindings,
-        info.inputAssembler,
-        info.rasterizer,
-        info.depthStencil,
-        info.colorBlend
-    );
-}
-
-void callVertexAttribFormat(DataFormat format, GLuint location, GLuint offset) {
-    switch(format) {
-        case R32_SFLOAT:
-            glVertexAttribFormat(location, 1, GL_FLOAT, GL_FALSE, offset);
-            break;
-        case R32G32_SFLOAT:
-            glVertexAttribFormat(location, 2, GL_FLOAT, GL_FALSE, offset);
-            break;
-        case R32G32B32_SFLOAT:
-            cout << "calling with " << location << " " << offset << endl;
-            glVertexAttribFormat(location, 3, GL_FLOAT, GL_FALSE, offset);
-            break;
-        case R32G32B32A32_SFLOAT:
-            glVertexAttribFormat(location, 4, GL_FLOAT, GL_FALSE, offset);
-            break;
-        default:
-            assert(false);
-    }
-}
 
 void OpenGLContext::bindVertexArray(VertexArray& vertexArray) {
     if(vertexArray.getId() != currentVertexArray) {
@@ -231,10 +72,10 @@ void OpenGLContext::bindVertexArray(VertexArray& vertexArray) {
     }
 }
 
-Buffer OpenGLContext::buildBuffer(BufferUsage usage, GLsizeiptr size, const void *data, GLbitfield flags) {
+UntypedBuffer OpenGLContext::buildBuffer(BufferUsage usage, GLsizeiptr size, const void *data, GLbitfield flags) {
     GLuint id;
     glGenBuffers(1, &id);
-    Buffer buffer(id, usage, size);
+    UntypedBuffer buffer(id, usage, size);
 
     bindBuffer(buffer, GL_ARRAY_BUFFER);
     glBufferStorage(GL_ARRAY_BUFFER, size, data, flags);
@@ -242,7 +83,7 @@ Buffer OpenGLContext::buildBuffer(BufferUsage usage, GLsizeiptr size, const void
     return std::move(buffer);
 }
 
-Buffer OpenGLContext::buildBuffer(BufferUsage usage, GLsizeiptr size, GLbitfield flags) {
+UntypedBuffer OpenGLContext::buildBuffer(BufferUsage usage, GLsizeiptr size, GLbitfield flags) {
     return buildBuffer(usage, size, nullptr, flags);
 }
 
@@ -274,14 +115,14 @@ void OpenGLContext::setSwapInterval(int nframes) {
     glfwSwapInterval(nframes);
 }
 
-void OpenGLContext::bindBuffer(Buffer &buffer, GLenum target) {
+void OpenGLContext::bindBuffer(UntypedBuffer &buffer, GLenum target) {
     if(boundBuffers[target] != buffer.getId()) {
         glBindBuffer(target, buffer.getId());
         boundBuffers[target] = buffer.getId();
     }
 }
 
-void OpenGLContext::bindUniformBuffer(const Buffer &buffer, GLuint index, GLintptr offset, GLsizeiptr size) {
+void OpenGLContext::bindUniformBuffer(const UntypedBuffer &buffer, GLuint index, GLintptr offset, GLsizeiptr size) {
     //if(boundUniformBuffers[index] != buffer.getId()) {
         glBindBufferRange(GL_UNIFORM_BUFFER, index, buffer.getId(), offset, size);
     //    boundUniformBuffers[index] = buffer.getId();
@@ -341,19 +182,18 @@ GLuint getTransferDataType(TransferFormat format) {
     }
 }
 
-Texture OpenGLContext::buildTexture2D(DataFormat format, Dimensions2d size, bool hasMipMaps) {
-    TextureType type = TextureType::TEXTURE_2D;
+Texture2d OpenGLContext::buildTexture2D(DataFormat format, Dimensions2d size, bool hasMipMaps) {
     GLuint id;
     glGenTextures(1, &id);
-    Texture tex(id, type, format, size, hasMipMaps);
+    Texture2d tex(id, format, size, hasMipMaps);
 
     bindTexture(tex);
-    glTexStorage2D(static_cast<GLuint>(type), hasMipMaps ? floor(log2(max(size.width, size.height))) + 1 : 1, getTextureFormat(format), size.width, size.height);
+    glTexStorage2D(static_cast<GLuint>(tex.type), hasMipMaps ? floor(log2(max(size.width, size.height))) + 1 : 1, getTextureFormat(format), size.width, size.height);
 
     return std::move(tex);
 }
 
-void OpenGLContext::uploadBaseImage2D(Texture& texture, TransferFormat format, const void *data) {
+void OpenGLContext::uploadBaseImage2D(Texture2d& texture, TransferFormat format, const void *data) {
     bindTexture(texture);
     glTexSubImage2D(static_cast<GLuint>(texture.type), 0, 0, 0, texture.size.width, texture.size.height, getTransferDataFormat(format), getTransferDataType(format), data);
     if(texture.hasMipMaps) {
@@ -408,4 +248,161 @@ Framebuffer OpenGLContext::buildFramebuffer(ColorAttachments colorAttachments, M
 
 void OpenGLContext::bindReadFramebuffer(GLuint framebufferId) {
     glBindFramebuffer(GL_READ_FRAMEBUFFER, framebufferId);
+}
+
+void OpenGLContext::performDrawCall(PrimitiveTopology topology, variant<NonIndexedDrawCall, IndexedDrawCall> drawCall,
+                                    GLuint instanceCount, GLuint firstInstance) {
+    GLenum top = static_cast<GLenum>(topology);
+    if(auto call = std::get_if<NonIndexedDrawCall>(&drawCall)) {
+        if(instanceCount == 1) {
+            glDrawArrays(top, call->firstVertex, call->vertexCount);
+        } else {
+            if(firstInstance == 0 && call->firstVertex == 0) {
+                glDrawArraysInstanced(top, call->firstVertex, call->vertexCount, instanceCount);
+            } else {
+                glDrawArraysInstancedBaseInstance(top, call->firstVertex, call->vertexCount,
+                                                  instanceCount,
+                                                  firstInstance);
+            }
+        }
+    } else if(auto call = std::get_if<IndexedDrawCall>(&drawCall)) {
+        bindBuffer(*call->indexBuffer.buffer, GL_ELEMENT_ARRAY_BUFFER);
+
+        const void *indexOffset = (const void *) (call->firstIndex * indexFormatGetBytes(call->indexBuffer.format));
+
+        if(instanceCount == 1) {
+            glDrawElements(top, call->indexCount, call->indexBuffer.format, indexOffset);
+        } else {
+            if(firstInstance == 0 && call->firstVertex == 0) {
+                glDrawElementsInstanced(
+                        top, call->indexCount, call->indexBuffer.format, indexOffset,
+                        instanceCount);
+            } else {
+                glDrawElementsInstancedBaseVertexBaseInstance(
+                        top, call->indexCount, call->indexBuffer.format, indexOffset,
+                        instanceCount, call->firstVertex, firstInstance);
+            }
+        }
+    }
+}
+
+void OpenGLContext::bindTextureAndSampler(uint32_t unit, const Texture &texture, const Sampler &sampler) {
+    // TODO: track this state
+    glActiveTexture(GL_TEXTURE0 + unit);
+    glBindTexture(static_cast<GLuint>(texture.type), texture.getId());
+    glBindSampler(unit, sampler.getId());
+}
+
+void OpenGLContext::enableVertexArrayAttribute(VertexArray &array, GLuint location) {
+    bindVertexArray(array);
+    glEnableVertexAttribArray(location);
+}
+
+void
+OpenGLContext::setVertexArrayAttributeFormat(VertexArray &array, GLuint location, DataFormat format, GLuint offset) {
+    bindVertexArray(array);
+    switch(format) {
+        case R32_SFLOAT:
+            glVertexAttribFormat(location, 1, GL_FLOAT, GL_FALSE, offset);
+            break;
+        case R32G32_SFLOAT:
+            glVertexAttribFormat(location, 2, GL_FLOAT, GL_FALSE, offset);
+            break;
+        case R32G32B32_SFLOAT:
+            glVertexAttribFormat(location, 3, GL_FLOAT, GL_FALSE, offset);
+            break;
+        case R32G32B32A32_SFLOAT:
+            glVertexAttribFormat(location, 4, GL_FLOAT, GL_FALSE, offset);
+            break;
+        default:
+            assert(false);
+    }
+}
+
+void OpenGLContext::setVertexArrayAttributeBinding(VertexArray &array, GLuint location, GLuint binding) {
+    bindVertexArray(array);
+    glVertexAttribBinding(location, binding);
+}
+
+void OpenGLContext::setVertexArrayBindingDivisor(VertexArray &array, GLuint binding, GLuint divisor) {
+    bindVertexArray(array);
+    glVertexBindingDivisor(binding, divisor);
+}
+
+void OpenGLContext::bindVertexBuffer(VertexArray &array, GLuint index, const UntypedBuffer &buffer, uint32_t offset, uint32_t stride) {
+    bindVertexArray(array);
+    // TODO: track this state
+    glBindVertexBuffer(index, buffer.getId(), offset, stride);
+}
+
+void OpenGLContext::switchRasterizerState(RasterizerState &newRasterizer) {
+    if(newRasterizer.polygonMode != rasterizer.polygonMode) {
+        glPolygonMode(GL_FRONT_AND_BACK, newRasterizer.polygonMode);
+        rasterizer.polygonMode = newRasterizer.polygonMode;
+    }
+    if(newRasterizer.culling != rasterizer.culling) {
+        if(newRasterizer.culling.has_value()) {
+            glEnable(GL_CULL_FACE);
+            glCullFace(newRasterizer.culling.value());
+        } else {
+            glDisable(GL_CULL_FACE);
+        }
+        rasterizer.culling = newRasterizer.culling;
+    }
+    if(newRasterizer.frontFace != rasterizer.frontFace) {
+        glFrontFace(newRasterizer.frontFace);
+        rasterizer.frontFace = newRasterizer.frontFace;
+    }
+}
+
+void OpenGLContext::switchDepthStencilState(DepthStencilState &newDepthStencil) {
+    if(newDepthStencil.depthTest != depthStencil.depthTest) {
+        if(newDepthStencil.depthTest.has_value()) {
+            glEnable(GL_DEPTH_TEST);
+            glDepthFunc(newDepthStencil.depthTest.value());
+        } else {
+            glDisable(GL_DEPTH_TEST);
+        }
+        depthStencil.depthTest = newDepthStencil.depthTest;
+    }
+    if(newDepthStencil.depthWrite != depthStencil.depthWrite) {
+        glDepthMask(newDepthStencil.depthWrite);
+        depthStencil.depthWrite = newDepthStencil.depthWrite;
+    }
+}
+
+void OpenGLContext::switchInputAssemblerState(InputAssemblerState &newInputAssembler) {
+    // input assembler
+    if(newInputAssembler.primitiveRestartEnable != primitiveRestartEnabled) {
+        if(newInputAssembler.primitiveRestartEnable) {
+            glEnable(GL_PRIMITIVE_RESTART);
+            glEnable(GL_PRIMITIVE_RESTART_FIXED_INDEX);
+        } else {
+            glDisable(GL_PRIMITIVE_RESTART);
+        }
+        primitiveRestartEnabled = !primitiveRestartEnabled;
+    }
+}
+
+void OpenGLContext::switchColorBlendState(ColorBlendState &newColorBlend) {
+    for(auto& attachment : newColorBlend.attachments) {
+        auto existing = colorBlend.attachments.find(attachment.first);
+        if(existing == colorBlend.attachments.end() || existing->second != attachment.second) {
+            if(attachment.second.blending.has_value()) {
+                glEnablei(GL_BLEND, attachment.first);
+                glBlendFuncSeparatei(attachment.first, attachment.second.blending->color.srcFactor, attachment.second.blending->color.dstFactor, attachment.second.blending->alpha.srcFactor, attachment.second.blending->alpha.dstFactor);
+                glBlendEquationSeparatei(attachment.first, attachment.second.blending->color.equation, attachment.second.blending->alpha.equation);
+            } else {
+                glDisablei(GL_BLEND, attachment.first);
+            }
+
+            glColorMaski(attachment.first, get<0>(attachment.second.colorMask), get<1>(attachment.second.colorMask), get<2>(attachment.second.colorMask), get<3>( attachment.second.colorMask));
+
+            colorBlend.attachments[attachment.first] = attachment.second;
+        }
+    }
+    if(newColorBlend.constants != colorBlend.constants) {
+        glBlendColor(newColorBlend.constants.x, newColorBlend.constants.y, newColorBlend.constants.z, newColorBlend.constants.w);
+        newColorBlend.constants= colorBlend.constants;
+    }
 }

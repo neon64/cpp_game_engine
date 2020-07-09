@@ -58,3 +58,7 @@ Sampler::Sampler(GLuint id) : OpenGLResource(id) {}
 void Sampler::destroyResource() {
     glDeleteSamplers(1, &id);
 }
+
+Texture2d::Texture2d(GLuint id, DataFormat format, Dimensions2d size, bool hasMipMaps) : Texture(id, TextureType::TEXTURE_2D, format, size, hasMipMaps) {
+
+}

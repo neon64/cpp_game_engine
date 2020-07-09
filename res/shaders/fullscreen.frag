@@ -16,5 +16,5 @@ void main() {
     float z_n = 2.0 * z_b - 1.0;
     float z_e = 2.0 * zNear * zFar / (zFar + zNear - z_n * (zFar - zNear));
 
-    color = vec4(1.0 - z_e, 1.0 - z_e, 1.0 - z_e, 1.0);
+    color = vec4(vec3(z_e), 1.0);
 }

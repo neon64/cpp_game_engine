@@ -13,7 +13,7 @@ void Shader::destroyResource() {
 }
 
 void Shader::compile(const std::string &source) {
-    std::cout << "compiling shader id=" << getId() << std::endl;
+    std::cout << "compiling shader '" << description << "' (id=" << getId() << ")" << std::endl;
     int len = source.size();
     const char *first_string = source.c_str();
     glShaderSource(id, 1, &first_string, &len);
@@ -29,7 +29,7 @@ void Shader::compile(const std::string &source) {
         int bytesWritten;
         glGetShaderInfoLog(id, maxLength, &bytesWritten, infoLog);
 
-        std::cout << infoLog << std::endl;
+        std::cerr << infoLog << std::endl;
 
         free(infoLog);
     }
@@ -37,6 +37,7 @@ void Shader::compile(const std::string &source) {
 
 shared_ptr<Shader> Shader::build(ShaderType type, std::string description, const std::string &source) {
     GLuint id = glCreateShader(type);
+    glObjectLabel(GL_SHADER, id, description.size(), description.c_str());
 
     auto s = make_shared<Shader>(id, type, description);
     s->compile(source);

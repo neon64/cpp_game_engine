@@ -118,6 +118,6 @@ Dimensions2d OwnedDepthTextureAttachment::getSize() const {
     return texture.size;
 }
 
-const Texture &OwnedDepthTextureAttachment::getTexture() const {
+const Texture& OwnedDepthTextureAttachment::getTexture() const {
     return texture;
 }

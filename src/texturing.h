@@ -2,9 +2,9 @@
 #ifndef GAME_ENGINE_TEXTURING_H
 #define GAME_ENGINE_TEXTURING_H
 
+#include "buffer.h"
 #include <glad/glad.h>
 #include "OpenGLResource.h"
-#include "pipeline.h"
 #include "util.h"
 
 enum class TextureType {
@@ -50,6 +50,11 @@ public:
 
 };
 
+class Texture2d : public Texture {
+public:
+    Texture2d(GLuint id, DataFormat format, Dimensions2d size, bool hasMipMaps);
+};
+
 struct SamplerCreateInfo {
     SamplerFilter magFilter;
     SamplerFilter minFilter;
@@ -68,6 +73,12 @@ public:
 
     static Sampler build(SamplerCreateInfo info);
 
+};
+
+template<typename T>
+struct TextureBinding {
+    const T& texture;
+    const Sampler& sampler;
 };
 
 #endif //GAME_ENGINE_TEXTURING_H

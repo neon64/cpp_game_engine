@@ -10,12 +10,16 @@
 #include <glad/glad.h>
 #include <unordered_map>
 
+#include "texturing.h"
+#include "buffer.h"
 #include "Program.h"
 #include "VertexArray.h"
 
 using namespace std;
 
-enum PrimitiveTopology {
+class OpenGLContext;
+
+enum class PrimitiveTopology {
     POINTS = GL_POINTS,
     LINES = GL_LINES,
     TRIANGLES = GL_TRIANGLES,
@@ -27,20 +31,6 @@ enum PrimitiveTopology {
 enum InputRate {
     PER_VERTEX,
     PER_INSTANCE
-};
-
-enum DataFormat {
-    R8G8B8_UINT,
-    R8G8B8A8_UINT,
-    R8G8B8_SRGB,
-    R8G8B8A8_SRGB,
-    R32_SFLOAT,
-    R32G32_SFLOAT,
-    R32G32B32_SFLOAT,
-    R32G32B32A32_SFLOAT,
-    D16_UNORM,
-    D24_UNORM,
-    D32_SFLOAT
 };
 
 struct VertexInputBinding {
@@ -56,13 +46,8 @@ struct VertexInputAttribute {
     uint32_t offset;
 };
 
-struct VertexInputState {
-    vector<VertexInputBinding> bindings;
-    vector<VertexInputAttribute> attributes;
-};
-
 struct InputAssemblerState {
-    PrimitiveTopology topology;
+    PrimitiveTopology topology = PrimitiveTopology::TRIANGLES;
     bool primitiveRestartEnable = false;
 };
 
@@ -83,7 +68,7 @@ enum FrontFace {
     COUNTER_CLOCKWISE = GL_CCW
 };
 
-struct RasterizationState {
+struct RasterizerState {
     // bool depthClampEnable = false;
     // bool rasterizerDiscardEnable = false;
     PolygonMode polygonMode = PolygonMode::FILL;
@@ -110,7 +95,7 @@ enum ComparisonFunction {
 
 struct DepthStencilState {
     optional<ComparisonFunction> depthTest = nullopt;
-    bool depthMask = true;
+    bool depthWrite = true;
     // TODO: support the rest of these
     // bool depthBoundsTestEnable;
     // bool stencilTestEnable;
@@ -141,19 +126,39 @@ enum BlendingEquation {
     MAX = GL_MAX
 };
 
-struct Blending {
+struct BlendingFunction {
     BlendingEquation equation;
     BlendingFactor srcFactor;
     BlendingFactor dstFactor;
+
+    static BlendingFunction ALPHA;
+    static BlendingFunction ADDITIVE;
+
+    bool operator==(const BlendingFunction& other) const;
+
+};
+
+struct Blending {
+    BlendingFunction color;
+    BlendingFunction alpha;
+
+    static optional<Blending> DISABLED;
+    static optional<Blending> ALPHA;
+    static optional<Blending> ADDITIVE;
+
+    bool operator==(const Blending& other) const;
 };
 
 struct ColorBlendPerAttachment {
     optional<Blending> blending = nullopt;
-    tuple<bool, bool, bool, bool> mask = tuple(true, true, true, true);
+    tuple<bool, bool, bool, bool> colorMask = tuple(true, true, true, true);
+
+    bool operator==(const ColorBlendPerAttachment& other) const;
 };
 
 struct ColorBlendState {
     unordered_map<int, ColorBlendPerAttachment> attachments;
+    glm::vec4 constants = glm::vec4(0);
 };
 
 struct ShaderStages {
@@ -163,53 +168,116 @@ struct ShaderStages {
 
     bool operator==(const ShaderStages &other) const {
         return (vertex == other.vertex
-              && fragment == other.fragment);
+                && fragment == other.fragment);
     }
 };
 
 // from https://en.cppreference.com/w/cpp/utility/hash
 namespace std {
 
-    template <>
-    struct hash<ShaderStages> {
-        std::size_t operator()(const ShaderStages& k) const {
-            using std::size_t;
-            using std::hash;
-            using std::string;
+template<>
+struct hash<ShaderStages> {
+    std::size_t operator()(const ShaderStages &k) const {
+        using std::size_t;
+        using std::hash;
+        using std::string;
 
-            // should maybe use boost::hash_combine instead
-            return ((hash<shared_ptr<Shader>>()(k.vertex)
-                     ^ (hash<shared_ptr<Shader>>()(k.fragment) << 1)) >> 1);
-        }
-    };
+        // should maybe use boost::hash_combine instead
+        return ((hash<shared_ptr<Shader>>()(k.vertex)
+                 ^ (hash<shared_ptr<Shader>>()(k.fragment) << 1)) >> 1);
+    }
+};
 
 }
 
+struct UntypedVertexBindings;
+struct UntypedResourceBindings;
+
+struct UntypedVertexBindingPipelineState {
+    vector<VertexInputBinding> layout;
+
+    UntypedVertexBindingPipelineState(vector<VertexInputBinding> layout);
+
+    void bindAll(const UntypedVertexBindings& bindings, VertexArray& array, OpenGLContext& context);
+};
+
+struct UntypedResourceBindingPipelineState {
+    void bindAll(const UntypedResourceBindings& bindings, OpenGLContext& context);
+};
+
+struct UntypedVertexInputCreateInfo {
+    vector<VertexInputBinding> bindings;
+    vector<VertexInputAttribute> attributes;
+
+    UntypedVertexBindingPipelineState init(VertexArray& array, OpenGLContext& context);
+};
+
+struct UntypedResourceBindingCreateInfo {
+    UntypedResourceBindingPipelineState init();
+};
+
+struct UntypedVertexBindings {
+    const unordered_map<uint32_t, UntypedVertexBufferBinding> bindings;
+
+    UntypedVertexBindings(unordered_map<uint32_t, UntypedVertexBufferBinding> bindings);
+
+    using CreateInfo = UntypedVertexInputCreateInfo;
+    using PipelineState = UntypedVertexBindingPipelineState;
+};
+
+struct UntypedResourceBindings {
+    const unordered_map<uint32_t, UntypedUniformBufferBinding> uniforms;
+    const unordered_map<uint32_t, TextureBinding<Texture>> textures;
+
+    using CreateInfo = UntypedResourceBindingCreateInfo;
+    using PipelineState = UntypedResourceBindingPipelineState;
+};
+
+template<typename V, typename R>
 struct GraphicsPipelineCreateInfo {
     ShaderStages shaders;
-    VertexInputState vertexInput;
+    V::CreateInfo vertexInput {};
+    R::CreateInfo resourceBindings {};
     InputAssemblerState inputAssembler;
-    RasterizationState rasterizer;
+    RasterizerState rasterizer;
     DepthStencilState depthStencil;
     ColorBlendState colorBlend;
 };
 
+using UntypedGraphicsPipelineCreateInfo = GraphicsPipelineCreateInfo<UntypedVertexBindings, UntypedResourceBindings>;
+
+template<typename V, typename R>
 class GraphicsPipeline {
 public:
     shared_ptr<Program> program;
     VertexArray vertexArray;
-    vector<VertexInputBinding> vertexInputBindings;
+    V::PipelineState vertexPipelineState;
+    R::PipelineState resourcesPipelineState;
     InputAssemblerState inputAssembler;
+
     // TesselationState;
     // ViewportState; - will use the default viewport
-    RasterizationState rasterizer;
+
+    RasterizerState rasterizer;
+
     // MultisampleState;
+
     DepthStencilState depthStencil;
     ColorBlendState colorBlend;
+
     // DynamicState;
 
 public:
-    GraphicsPipeline(shared_ptr<Program> program, VertexArray&& vertexArray, vector<VertexInputBinding> vertexInputBindings, InputAssemblerState inputAssembler, RasterizationState rasterizer, DepthStencilState depthStencil, ColorBlendState colorBlend);
+    GraphicsPipeline(shared_ptr<Program> program, VertexArray &&vertexArray,
+                     V::PipelineState vertexPipelineState, R::PipelineState resourcesPipelineState, InputAssemblerState inputAssembler,
+                     RasterizerState rasterizer, DepthStencilState depthStencil, ColorBlendState colorBlend)
+            : program(program), vertexArray(std::move(vertexArray)), vertexPipelineState(vertexPipelineState), resourcesPipelineState(resourcesPipelineState),
+              inputAssembler(inputAssembler), rasterizer(rasterizer), depthStencil(depthStencil),
+              colorBlend(colorBlend) {
+
+    }
 };
+
+using UntypedGraphicsPipeline = GraphicsPipeline<UntypedVertexBindings, UntypedResourceBindings>;
 
 #endif //GAME_ENGINE_PIPELINE_H

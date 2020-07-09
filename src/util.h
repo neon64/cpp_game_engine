@@ -42,4 +42,13 @@ struct Rect2d {
     }
 };
 
+static glm::vec3 FULLSCREEN_QUAD_VERTICES[6] = {
+    glm::vec3(-1.0f, -1.0f, 0),
+    glm::vec3(1.0f, -1.0f, 0),
+    glm::vec3(1.0f, 1.0f, 0),
+    glm::vec3(1.0f, 1.0f, 0),
+    glm::vec3(-1.0f, 1.0f, 0),
+    glm::vec3(-1.0f, -1.0f, 0)
+};
+
 #endif //GAME_ENGINE_UTIL_H

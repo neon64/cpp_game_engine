@@ -18,8 +18,12 @@ public:
     OpenGLResource(const OpenGLResource&) = delete;
     OpenGLResource& operator=(const OpenGLResource&) = delete;
     OpenGLResource(OpenGLResource&& other) : id(std::move(other.id)) {
-        std::cout << "setting source id to zero" << std::endl;
         other.id = 0;
+    }
+    OpenGLResource& operator=(OpenGLResource&& other) {
+        id = std::move(other.id);
+        other.id = 0;
+        return *this;
     }
 
     ~OpenGLResource() {

@@ -18,7 +18,7 @@ void Program::linkAndValidate() {
     int status;
     glGetProgramiv(id, GL_LINK_STATUS, &status);
     if(status == GL_FALSE) {
-        std::cout << "program linking failed" << std::endl;
+        std::cerr << "program linking failed (id=" << getId() << ")" << std::endl;
         int maxLength;
         glGetProgramiv(id, GL_INFO_LOG_LENGTH, &maxLength);
 
@@ -26,7 +26,11 @@ void Program::linkAndValidate() {
         int bytesWritten;
         glGetProgramInfoLog(id, maxLength, &bytesWritten, infoLog);
 
-        std::cout << infoLog << "(bytes=" << bytesWritten << ")" << std::endl;
+        if(bytesWritten == 0) {
+            std::cerr << "no info log" << endl;
+        } else {
+            std::cerr << "info log: " << infoLog << "(bytes=" << bytesWritten << ")" << std::endl;
+        }
 
         free(infoLog);
     }
