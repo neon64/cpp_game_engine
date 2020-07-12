@@ -21,7 +21,7 @@ private:
 public:
     GLFWwindow* handle;
 
-    Window(Dimensions2d size, const char *name);
+    Window(Dimensions2d size, const char *name, bool initiallyFullscreen);
 
     // can only move, not copyable
     Window(const Window&) = delete;
@@ -33,8 +33,10 @@ public:
 
     std::function<void(int, int, int, int)> keyCallback;
     std::function<void(double, double)> cursorPosCallback;
+    std::function<void(int, int, int)> mouseButtonCallback;
 
     void setKeyCallback(std::function<void(int, int, int, int)> keyCallback);
+    void setMouseButtonCallback(std::function<void(int, int, int)> mouseCallback);
     void setCursorPosCallback(std::function<void(double, double)> cursorPosCallback);
 
     void addResizeCallback(std::function<void(Dimensions2d)> resizeCallback);
@@ -42,6 +44,7 @@ public:
     void makeContextCurrent();
 
     void grabMouseCursor();
+    bool isMouseCursorGrabbed();
     void releaseMouseCursor();
 
     Dimensions2d getSize();

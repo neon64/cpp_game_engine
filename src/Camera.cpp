@@ -8,9 +8,10 @@ using namespace std;
 
 Camera::Camera(Window &window, float mouseSensitivity, float movementSpeed) : window(window), firstMousePos(true), mouseSensitivity(mouseSensitivity), movementSpeed(movementSpeed) {
     orientation = glm::lookAt(glm::vec3(0, 0, -1), glm::vec3(0, 0, 0), glm::vec3(0, 1, 0));
-    position = glm::vec3(0.0f, 0.0f, 1.0f);
+    position = glm::vec3(0.0f, 0.0f, -2.0f);
 
     window.setCursorPosCallback([this](double x, double y) {
+        if(!this->window.isMouseCursorGrabbed()) { return; }
         if(firstMousePos) {
             lastX = x;
             lastY = y;
@@ -37,7 +38,7 @@ Camera::Camera(Window &window, float mouseSensitivity, float movementSpeed) : wi
     });
 
     window.addResizeCallback([this](Dimensions2d newSize) {
-        projectionMatrix = glm::perspective(glm::radians(45.0f), (float) newSize.width / (float) newSize.height, 0.01f, 10.f);
+        projectionMatrix = glm::perspective(glm::radians(45.0f), (float) newSize.width / (float) newSize.height, 0.01f, 100.f);
     });
 }
 

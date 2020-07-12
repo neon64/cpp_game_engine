@@ -6,6 +6,10 @@
       <file path="$PROJECT_DIR$/gen" />
       <file path="$PROJECT_DIR$/src" />
     </sourceRoots>
+    <excludeRoots>
+      <file path="$PROJECT_DIR$/glslang" />
+      <file path="$PROJECT_DIR$/vcpkg" />
+    </excludeRoots>
   </component>
   <component name="JavaScriptSettings">
     <option name="languageLevel" value="ES6" />

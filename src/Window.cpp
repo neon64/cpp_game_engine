@@ -3,6 +3,9 @@
 #include "errors.h"
 #include "util.h"
 
+#define LOGURU_WITH_STREAMS 1
+#include <loguru/loguru.hpp>
+
 #include <iostream>
 
 using namespace std;
@@ -13,6 +16,10 @@ void handle_key_press(GLFWwindow* window, int key, int scancode, int action, int
     (static_cast<Window *>(glfwGetWindowUserPointer(window))->keyCallback)(key, scancode, action, mods);
 }
 
+void handle_mouse_button(GLFWwindow* window, int button, int action, int mods) {
+    (static_cast<Window *>(glfwGetWindowUserPointer(window))->mouseButtonCallback)(button, action, mods);
+}
+
 void handle_cursor_pos(GLFWwindow* window, double x, double y) {
     (static_cast<Window *>(glfwGetWindowUserPointer(window))->cursorPosCallback)(x, y);
 }
@@ -21,7 +28,7 @@ void handle_window_resize(GLFWwindow *window, int width, int height) {
     (static_cast<Window *>(glfwGetWindowUserPointer(window))->onResize)(Dimensions2d(width, height));
 }
 
-Window::Window(Dimensions2d size, const char *name) : windowedSize(size), size(size) {
+Window::Window(Dimensions2d size, const char *name, bool initiallyFullscreen) : windowedSize(size), size(size) {
     if(!hasInitGLFW) {
         Window::initGLFW();
     }
@@ -32,7 +39,17 @@ Window::Window(Dimensions2d size, const char *name) : windowedSize(size), size(s
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
     glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GL_TRUE);
 
-    handle = glfwCreateWindow(size.width, size.height, name, NULL, NULL);
+    GLFWmonitor* monitor;
+
+    if(initiallyFullscreen) {
+        monitor = glfwGetPrimaryMonitor();
+        const char *monitorName = glfwGetMonitorName(monitor);
+        LOG_S(INFO) << "Entering fullscreen on window " << monitorName;
+    } else {
+        monitor = nullptr;
+    }
+
+    handle = glfwCreateWindow(size.width, size.height, name, monitor, NULL);
 
     glfwSetWindowUserPointer(handle, this);
     glfwSetWindowSizeCallback(handle, handle_window_resize);
@@ -105,7 +122,7 @@ void Window::onResize(Dimensions2d newSize) {
 void Window::enterFullscreen() {
     GLFWmonitor* monitor = glfwGetPrimaryMonitor();
     const char *name = glfwGetMonitorName(monitor);
-    cout << "Entering fullscreen on window " << name << endl;
+    LOG_S(INFO) << "Entering fullscreen on window " << name;
     const GLFWvidmode *videomode = glfwGetVideoMode(monitor);
     glfwSetWindowMonitor(handle, monitor, 0, 0, videomode->width, videomode->height, GLFW_DONT_CARE);
 }
@@ -137,11 +154,20 @@ void Window::terminate() {
 void Window::grabMouseCursor() {
     glfwSetInputMode(handle, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
     if (glfwRawMouseMotionSupported()) {
-        cout << "Using raw mouse motion" << endl;
+        LOG_S(INFO) << "Using raw mouse motion";
         glfwSetInputMode(handle, GLFW_RAW_MOUSE_MOTION, GLFW_TRUE);
     }
 }
 
 void Window::releaseMouseCursor() {
     glfwSetInputMode(handle, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+}
+
+void Window::setMouseButtonCallback(std::function<void(int, int, int)> mouseCallback) {
+    this->mouseButtonCallback = mouseCallback;
+    glfwSetMouseButtonCallback(handle, handle_mouse_button);
+}
+
+bool Window::isMouseCursorGrabbed() {
+    return glfwGetInputMode(handle, GLFW_CURSOR) == GLFW_CURSOR_DISABLED;
 }

@@ -1,7 +1,11 @@
 
+#define LOGURU_USE_STREAMS 1
+#include <loguru/loguru.hpp>
 #include <glad/glad.h>
 #include <cassert>
 #include <iostream>
+#include "errors.h"
+
 
 using namespace std;
 
@@ -56,9 +60,18 @@ const char *debug_message_severity_to_string(GLenum severity) {
 }
 
 void handleGLFWError(int code, const char* desc) {
-    cerr << "GLFW error: " << desc << endl;
+    LOG_S(ERROR) << "GLFW error: " << desc;
 }
 
 void handleGLError(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar *message, const void *userParam) {
-    cerr << "GL error: type=" << debug_message_type_to_string(type) << ", id=" << id << ", severity=" << debug_message_severity_to_string(severity) << ", message={" << message << "}" << endl;
+    LOG_S(ERROR) << "GL error: type=" << debug_message_type_to_string(type) << ", id=" << id << ", severity=" << debug_message_severity_to_string(severity) << ", message={" << message << "}";
+}
+
+void checkForGLError() {
+    GLenum e = glGetError();
+    if(e != GL_NO_ERROR) {
+        LOG_S(FATAL) << "GL error: " << gl_error_to_string(e);
+        loguru::flush();
+        assert(false);
+    }
 }

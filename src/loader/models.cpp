@@ -3,24 +3,23 @@
 
 #include "../../gen/shaders/textured.h"
 
-#include <assimp/Importer.hpp>
-#include <assimp/scene.h>
-#include <assimp/postprocess.h>
 
-optional<ModelInfo> import_model(const std::string &filepath, OpenGLContext &context) {
-    Assimp::Importer importer;
 
-    const aiScene *scene = importer.ReadFile(filepath,
-//        aiProcess_CalcTangentSpace |
-            aiProcess_Triangulate |
-            //        aiProcess_GenNormals |
-            //        aiProcess_OptimizeMeshes |
+Model::Model(const char *filepath) {
+    scene = importer.ReadFile(filepath,
+            aiProcess_GenSmoothNormals            |
+            aiProcess_CalcTangentSpace      |
             aiProcess_JoinIdenticalVertices |
-            aiProcess_SortByPType);
+            aiProcess_Triangulate           |
+            aiProcess_GenUVCoords           |
+            aiProcess_SortByPType
+//                        aiProcess_OptimizeMeshes |
+    );
 
     if (!scene) {
-        cout << importer.GetErrorString() << endl;
-        return nullopt;
+        string s = importer.GetErrorString();
+        LOG_S(ERROR) << "Assimp Error: " << s;
+        throw s;
     }
 
     for (int i = 0; i < scene->mNumMaterials; i++) {
@@ -38,8 +37,8 @@ optional<ModelInfo> import_model(const std::string &filepath, OpenGLContext &con
         }
     }
 
-    int totalVertices = 0;
-    int totalIndices = 0;
+    totalVertices = 0;
+    totalIndices = 0;
 
     for (int i = 0; i < scene->mNumMeshes; i++) {
         aiMesh *mesh = scene->mMeshes[i];
@@ -49,65 +48,75 @@ optional<ModelInfo> import_model(const std::string &filepath, OpenGLContext &con
         totalVertices += mesh->mNumVertices;
         totalIndices += mesh->mNumFaces * 3;
     }
+}
 
+IndexFormat Model::getPreferredIndexFormat() {
+    if(totalVertices < SHRT_MAX) {
+        return IndexFormat::UINT16;
+    } else {
+        return IndexFormat::UINT32;
+    }
+}
 
-    auto indices = make_shared<UntypedBuffer>(
-            context.buildBuffer(BufferUsage::STATIC_DRAW, sizeof(uint32_t) * totalIndices, GL_MAP_WRITE_BIT));
-    cout << "setting buffer storage for " << totalIndices << " indices " << endl;
+size_t Model::getNumIndices() {
+    return totalIndices;
+}
 
-    context.withMappedBuffer(*indices, 0, indices->size, GL_MAP_WRITE_BIT | GL_MAP_INVALIDATE_BUFFER_BIT,
-            [scene](void *buf) -> void {
-                uint32_t *indices = static_cast<uint32_t *>(buf);
+size_t Model::getNumVertices() {
+    return totalVertices;
+}
 
-                int idx = 0;
-                for (int i = 0; i < scene->mNumMeshes; i++) {
-                    aiMesh *mesh = scene->mMeshes[i];
+void Model::writeIndices(span<uint32_t> thisBuffer) {
+    assert(thisBuffer.size() >= totalIndices);
 
-                    for (int k = 0; k < mesh->mNumFaces; k++) {
-                        aiFace face = mesh->mFaces[k];
+    int idx = 0;
+    for (int i = 0; i < scene->mNumMeshes; i++) {
+        aiMesh *mesh = scene->mMeshes[i];
 
-                        for (int j = 0; j < face.mNumIndices; j++) {
-                            int index = face.mIndices[j];
+        for (int k = 0; k < mesh->mNumFaces; k++) {
+            aiFace face = mesh->mFaces[k];
 
-                            indices[idx++] = index;
-                        }
-                    }
-                }
-            });
+            for (int j = 0; j < face.mNumIndices; j++) {
+                int index = face.mIndices[j];
 
-    auto vertices = context.buildBuffer(BufferUsage::STATIC_DRAW,
-            sizeof(pipelines::textured::VertexInput) * totalVertices, GL_MAP_WRITE_BIT);
-    cout << "setting buffer storage for " << totalVertices << " vertices " << endl;
-
-    context.withMappedBuffer(vertices, 0, vertices.size, GL_MAP_WRITE_BIT | GL_MAP_INVALIDATE_BUFFER_BIT,
-            [scene](void *buf) -> void {
-                pipelines::textured::VertexInput *positions = static_cast<pipelines::textured::VertexInput*>(buf);
-
-                int idx = 0;
-                for (int i = 0; i < scene->mNumMeshes; i++) {
-                    aiMesh *mesh = scene->mMeshes[i];
-
-                    for (int k = 0; k < mesh->mNumVertices; k++) {
-                        aiVector3D vertex = mesh->mVertices[k];
-
-                        aiVector3D normal;
-                        if (mesh->mNormals != nullptr) {
-                            normal = mesh->mNormals[k];
-                        }
-                        aiVector3D textureCoordinate = mesh->mTextureCoords[0][k];
-
-                        positions[idx].position = glm::vec3(vertex.x, vertex.y, vertex.z);
-                        positions[idx].texCoord = glm::vec2(textureCoordinate.x, textureCoordinate.y);
-                        positions[idx++].normal = glm::vec3(normal.x, normal.y, normal.z);
-                    }
-                }
-            });
-
-    return make_optional<ModelInfo>({
-            .vertices = std::move(vertices),
-            .indices = {
-                    .buffer = indices,
-                    .format = IndexFormat::UINT32
+                thisBuffer[idx++] = index;
             }
-    });
+        }
+    }
+
+    LOG_S(INFO) << "wrote " << idx << " indices to buffer";
+}
+
+glm::vec3 ModelVertex::readTangent() {
+    aiVector3D tangent;
+    if (scene->mMeshes[meshIdx]->mTangents != nullptr) {
+        tangent = scene->mMeshes[meshIdx]->mTangents[vertexIdx];
+    } else {
+        LOG_S(ERROR) << "expected tangents, found none";
+    }
+    return glm::vec3(tangent.x, tangent.y, tangent.z);
+}
+
+glm::vec2 ModelVertex::readTextureCoordinate() {
+    if(scene->mMeshes[meshIdx]->mNumUVComponents[0] < 1) {
+        LOG_S(ERROR) << "expected tex coords, found none";
+        return glm::vec2(0, 0);
+    }
+    aiVector3D textureCoordinate = scene->mMeshes[meshIdx]->mTextureCoords[0][vertexIdx];
+    return glm::vec2(textureCoordinate.x, textureCoordinate.y);
+}
+
+glm::vec3 ModelVertex::readNormal() {
+    aiVector3D normal;
+    if (scene->mMeshes[meshIdx]->mNormals != nullptr) {
+        normal = scene->mMeshes[meshIdx]->mNormals[vertexIdx];
+    } else {
+        LOG_S(ERROR) << "expected normals, found none";
+    }
+    return glm::vec3(normal.x, normal.y, normal.z);
+}
+
+glm::vec3 ModelVertex::readPosition() {
+    aiVector3D vec = scene->mMeshes[meshIdx]->mVertices[vertexIdx];
+    return glm::vec3(vec.x, vec.y, vec.z);
 }
