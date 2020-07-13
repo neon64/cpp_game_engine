@@ -1,5 +1,9 @@
 # C++ Game Engine
 
+![](/screenshots/bunnies_and_block.jpg)
+
+^ the overexposure on this screenshot suggests I should really implement tonemapping next.
+
 ## Aims:
 
 Very much a hobby project, am not trying to achieve the best graphics, or world-class performance, or latest features (e.g.: ray-tracing or real-time global illumination).
@@ -15,10 +19,6 @@ My aims are not:
 
 - implement game physics from scratch (I will probably just link to Bullet)
 - compete with Unity/Unreal etc... - I don't want to build a level editor or include a scripting API, this will be a (mostly) statically-linked, compiled C++ application.
-
-![](/screenshots/bunnies_and_block.jpg)
-
-^ This screenshot suggests I should really implement tonemapping next.
 
 ## Why C++?
 
