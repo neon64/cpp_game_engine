@@ -40,7 +40,8 @@ const int NUM_BUNNIES_ROWS = 3;
 const int NUM_BUNNIES_COLUMNS = 3;
 
 struct Uniforms {
-    // alignas(32) pipelines::textured::MatrixBlock texturedMatrices;
+//    char foo[64];
+//    alignas(32) pipelines::textured::MatrixBlock texturedMatrices;
     alignas(32) pipelines::lighting_test::MatrixBlock matrixBlock;
     alignas(32) pipelines::lighting_test::LightingBlock lighting;
     alignas(32) pipelines::lighting_test::Material material;
@@ -64,7 +65,7 @@ void fillTexturedVertices(pipelines::textured::VertexInput *vertex, ModelVertex 
 void fillTexturedVertices2(pipelines::lighting_test::VertexInput *vertex, ModelVertex source) {
     vertex->position = source.readPosition();
     vertex->texCoord = source.readTextureCoordinate();
-    LOG_S(INFO) << "normal: " << glm::to_string(source.readNormal());
+//    LOG_S(INFO) << "normal: " << glm::to_string(source.readNormal());
     vertex->normal = source.readNormal();
     vertex->tangent = source.readTangent();
 }
@@ -114,6 +115,10 @@ public:
         window = new Window(Dimensions2d(1920, 1080), "GameEngineCpp", true);
 
         context = new OpenGLContext(*window);
+
+        int a;
+        glGetIntegerv(GL_UNIFORM_BUFFER_OFFSET_ALIGNMENT, &a);
+        LOG_S(ERROR) << "GL_UNIFORM_BUFFER_OFFSET_ALIGNMENT = " << a;
 
         shaderCache = new ShaderCache(*context);
         textureCache = new Texture2dCache(*context);

@@ -7,6 +7,9 @@
 #include <span>
 #include <cassert>
 
+#define LOGURU_WITH_STREAMS 1
+#include <loguru/loguru.hpp>
+
 using namespace std;
 
 enum BufferUsage {
@@ -77,6 +80,8 @@ struct BufferView {
 
         assert(offset <= sizeof(T));
         assert(offset + size <= sizeof(T));
+
+        LOG_S(INFO) << "taking subslice offset: " << offset << ", size: " << size;
 
         return BufferView<T2>(buffer, offset);
     }
