@@ -16,6 +16,10 @@ My aims are not:
 - implement game physics from scratch (I will probably just link to Bullet)
 - compete with Unity/Unreal etc... - I don't want to build a level editor or include a scripting API, this will be a (mostly) statically-linked, compiled C++ application.
 
+![](/screenshots/bunnies_and_block.jpg)
+
+^ This screenshot suggests I should really implement tonemapping next.
+
 ## Why C++?
 
 TLDR: I would have written it in Rust, but I made a conscious decision to use C++ instead, in order to force me to finally learn it.
