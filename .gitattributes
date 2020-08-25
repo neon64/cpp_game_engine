@@ -1,0 +1,2 @@
+include/KHR/khrplatform.h linguist-detectable=false
+src/loader/stb_image.h linguist-detectable=false
